@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <script src="/node_modules/d3/dist/d3.min.js"></script>
+  </head>
+  <body>
+    <form>
+      <input type="file" name="file" />
+      <input type="submit" value="Upload">
+    </form>
+    <div>
+      <button id="download">Download</button>
+      <button id="check-columns">Check-columns</button>
+    </div>
+    <div id="status-upload"></div>
+    <table id="columns">
+      <thead><tr><td>Name</td><td>Synonym</td></tr></thead>
+      <tbody></tbody>
+    </table>
+    <script src="upload.js"></script>
+  </body>
+</html>
