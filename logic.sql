@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS videos
   name text,
   url text,
   CONSTRAINT pk_videos_id PRIMARY KEY (id),
-  CONSTRAINT unique_videos_names UNIQUE (name)
+  CONSTRAINT unique_videos_name UNIQUE (name)
 )
 WITH (
   OIDS=FALSE
@@ -58,9 +58,7 @@ CREATE TABLE IF NOT EXISTS names_synonyms
   name text,
   "similar" text,
   CONSTRAINT pk_names_synonyms_id PRIMARY KEY (id),
-  CONSTRAINT fk_names_synonyms_name FOREIGN KEY (name)
-      REFERENCES videos (name) MATCH SIMPLE
-      ON UPDATE NO ACTION ON DELETE NO ACTION
+  CONSTRAINT unique_names_synonyms_name_simlar UNIQUE (name, "similar")
 )
 WITH (
   OIDS=FALSE
@@ -200,3 +198,70 @@ CREATE TRIGGER trigger_columns_before_insert
   ON columns
   FOR EACH ROW
   EXECUTE PROCEDURE columns_before_insert();
+
+DROP VIEW IF EXISTS manage_names;
+CREATE VIEW manage_names AS (
+WITH
+as_is_first_names AS (
+  SELECT first_name AS first_name, COUNT(first_name) AS c_first_name
+  FROM as_is
+  WHERE NOT(first_name IS NULL OR first_name LIKE '')
+  GROUP BY first_name
+),
+as_is_names_synonyms AS (
+SELECT
+  as_is_first_names.first_name,
+  as_is_first_names.c_first_name,
+  names_synonyms.name
+FROM as_is_first_names
+LEFT JOIN names_synonyms
+  ON names_synonyms.similar=as_is_first_names.first_name
+)
+SELECT
+  as_is_names_synonyms.first_name,
+  as_is_names_synonyms.c_first_name,
+  as_is_names_synonyms.name,
+  videos.url
+FROM as_is_names_synonyms
+LEFT JOIN videos
+  ON videos.name=as_is_names_synonyms.first_name
+  OR videos.name=as_is_names_synonyms.name
+);
+
+CREATE OR REPLACE FUNCTION manage_names_instead_of_insert()
+  RETURNS trigger AS
+$$
+BEGIN
+  IF NEW.first_name IS NULL OR TRIM(NEW.first_name)='' THEN
+    RETURN NULL;
+  END IF;
+  IF NEW.c_first_name IS NULL THEN
+    RETURN NULL;
+  END IF;
+  IF NEW.first_name != OLD.first_name THEN
+    UPDATE as_is
+    SET first_name=NEW.first_name
+    WHERE first_name=OLD.first_name;
+  END IF;
+  IF OLD.name IS NULL AND NEW.name IS NOT NULL THEN
+    IF (NOT EXISTS(SELECT "similar"
+        FROM names_synonyms
+        WHERE "similar"=NEW.first_name)) THEN
+      INSERT INTO names_synonyms(name, "similar")
+      VALUES (NEW.name, NEW.first_name);
+    END IF;
+  ELSIF OLD.name IS NOT NULL THEN
+    UPDATE names_synonyms
+    SET name=NEW.name
+    WHERE "similar"=NEW.first_name;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_manage_names ON manage_names CASCADE;
+CREATE TRIGGER trigger_manage_names
+  INSTEAD OF UPDATE
+  ON manage_names
+  FOR EACH ROW
+  EXECUTE PROCEDURE manage_names_instead_of_insert();
