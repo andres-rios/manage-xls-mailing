@@ -1,7 +1,7 @@
 
 'use strict';
-const { toSQL } = require('./parseToSQL.js');
 const { toCSV } = require('./parseToCSV.js');
+const { fork } = require('child_process');
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
@@ -15,13 +15,20 @@ app.use(bodyParser.urlencoded());
 
 app.use('/', express.static('static'))
 app.post('/upload', multipartMiddleware, async function(req, res, next) {
-  try {
-    await toSQL(req.files.file.path);
-    res.json({ msg: 'ok', path: req.files.file.path });
-  } catch(e) {
-    console.error(e);
-    next();
-  }
+  const forked = fork('processUpload.js');
+  forked.on('message', (msg) => {
+    if (msg.action === 'exit') {
+      res.json({ msg: 'ok', path: req.files.file.path });
+    } else {
+      res.json({ msg: 'error', error: msg.error });
+    }
+    forked.kill();
+    fs.unlinkSync(req.files.file.path);
+  });
+
+  forked.send({
+    action: 'begin', path: req.files.file.path
+  });
 });
 
 app.get('/download', async function(req, res, next) {
