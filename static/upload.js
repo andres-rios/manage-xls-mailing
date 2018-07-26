@@ -99,6 +99,29 @@
       const tr = trs.enter().append('tr');
       tr.append('td').call(setEditable('name', updateTableVideo));
       tr.append('td').call(setEditable('url', updateTableVideo));
+
+      const newEntry = {};
+      const newTr = d3.select('#videos tbody').append('tr');
+      newTr.append('td')
+        .append('input')
+        .attr('placeholder', 'New Name')
+        .on('keyup', (d, i, m) => {
+          const e = d3.event;
+          const input = m[i];
+          if (e.code === 'Enter') {
+            newEntry.name = input.value;
+            input.value = '';
+            fetch('/videos', {
+              method: 'post',
+              headers: {
+                'Content-Type': 'application/json; charset=utf-8'
+              },
+              body: JSON.stringify(newEntry)
+            }).then(res => res.json()).then(res => {
+              showVideos();
+            });
+          }
+        });
     });
   };
   showVideos();

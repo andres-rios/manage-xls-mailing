@@ -69,8 +69,12 @@ app.get('/videos', async function(req, res, next) {
 app.put('/videos/:id', async function(req, res, next) {
   const id = ~~req.params.id;
   const updateData = req.body;
-  Videos.update(updateData, { where: { id }});
+  await Videos.update(updateData, { where: { id }});
   res.json(updateData);
+});
+app.post('/videos', async function(req, res, next) {
+  const createData = req.body;
+  res.json(await Videos.create(createData));
 });
 
 
@@ -126,7 +130,7 @@ app.get('/columns', async function(req, res, next) {
 app.put('/columns/:id', async function(req, res, next) {
   const id = ~~req.params.id;
   const updateData = req.body;
-  Columns.update(updateData, { where: { id }});
+  await Columns.update(updateData, { where: { id }});
   res.json(updateData);
 });
 
