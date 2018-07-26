@@ -52,16 +52,63 @@ const sequelize = new Sequelize('test', 'test', 'test', {
   dialect: 'postgres'
 });
 
+
+const Videos = sequelize.define('videos', {
+  name: Sequelize.TEXT,
+  url: Sequelize.TEXT
+});
+app.get('/videos', async function(req, res, next) {
+  const videos = await Videos.findAll({
+    order: [
+      ['name', 'DESC']
+    ]
+  });
+
+  res.json(videos);
+});
+app.put('/videos/:id', async function(req, res, next) {
+  const id = ~~req.params.id;
+  const updateData = req.body;
+  Videos.update(updateData, { where: { id }});
+  res.json(updateData);
+});
+
+
+const ManageNames = sequelize.define('manage_names', {
+  first_name: {
+    type: Sequelize.TEXT,
+    primaryKey: true
+  },
+  c_first_name: Sequelize.TEXT,
+  name: Sequelize.TEXT,
+  url: Sequelize.TEXT
+}, { timestamps: false });
+app.get('/manage_names', async function(req, res, next) {
+
+  await ManageNames.findAll({
+  }).then(response => {
+    res.json(response);
+  });
+
+});
+app.put('/manage_names/:id', async function(req, res, next) {
+  const first_name = req.params.id;
+  const updateData = req.body;
+  await ManageNames.update(updateData, { where: { first_name }});
+  const updated = await ManageNames.findOne({ where: { first_name }});
+  res.json(updated);
+});
+
+
 const Columns = sequelize.define('columns', {
   name: Sequelize.TEXT,
   synonym: Sequelize.TEXT
 });
-
 app.get('/columns', async function(req, res, next) {
-
   const columns = await Columns.findAll({
     order: [
-      ['name', 'DESC']
+      ['name', 'ASC'],
+      ['synonym', 'ASC']
     ]
   }).then(response => {
     const columns = response.map(d => {
@@ -76,16 +123,11 @@ app.get('/columns', async function(req, res, next) {
 
   res.json(columns);
 });
-
 app.put('/columns/:id', async function(req, res, next) {
   const id = ~~req.params.id;
   const updateData = req.body;
-  console.log(updateData);
-
   Columns.update(updateData, { where: { id }});
   res.json(updateData);
 });
-
-
 
 app.listen(3000, () => console.log('Example app listening on port 3000!'));
